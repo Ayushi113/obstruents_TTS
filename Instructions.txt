@@ -1,0 +1,206 @@
+############################################################################## Obstruent consonants ##############################################################################
+
+Set your working directory here:
+WD=/home/ayushi/Projects_2020/Naturalness 	#This is $WD
+
+1. Dataset in use:-
+   -- As wavefiles      
+      cd $WD/Complete_Dataset/Raw.Data
+   -- As transcripts *ordered* by sentence-ID
+      nano ./raw_blizzard_data/raw.Bliz.data.txt
+
+2. Rearrange
+   -- As wavefiles
+      mkdir $WD/Complete_Dataset/systems_to_montreal/
+      cd $WD/Complete_Dataset/systems_to_montreal/
+      mkdir A - Z (14 systems)
+
+   -- Transfer/copy waveFiles system-by-system 
+      cp $WD/Complete_Dataset/Raw.Data/A/*.wav $WD/Complete_Dataset/systems_to_montreal/check/*.wav
+
+3. Assign sentence-ID to sentence
+   -- Enter any directory which contains wavFiles
+      cd $WD
+      cd ./Complete_Dataset/systems_to_montreal/A
+      ls *.wav | sed 's/.wav//g' > Name.of.Files.txt
+      cp  ../../raw_blizzard_data/raw.Bliz.data.txt .
+      paste Name.of.Files.txt raw.Bliz.data.txt > 01.Prompts.With.ID.txt
+      cp ./01.Prompts.With.ID.txt $WD/organized_InterSpeech_2022/02.text_data/
+
+      ls $WD/organized_InterSpeech_2022/02.text_data/    ## check if it's reached!
+      rm ./01.Prompts.With.ID.txt Name.of.Files.txt raw.Bliz.data.txt
+      ls       ## should only be wavFiles    
+
+   -- Sentence-ID assigned!
+      cd $WD/ # return to base
+
+
+4. Create sentence-tier TextGrids:-
+   -- Run this script for every system
+      cd ./organized_InterSpeech_2022/scripts
+      python3  A.01.Create.TextGrids.From.KaldiText.py A-Z # "A." = All purpose = not cons/vowel dependent
+
+5. Creation of the variant-free lexicon:- 
+   -- cd /home/ayushi/Tools/montreal-forced-aligner_linux/montreal-forced-aligner  
+   -- bin/mfa_align $WD/Complete_Dataset/systems_to_montreal/A $WD/organized_InterSpeech_2022/text_data/02.Librispeech.Lexicon.Lower.txt english $WD/Complete_Dataset/output_montreal_1stpass/A_1stpass
+   
+   -- cd 
+   -- cd $WD/organized_InterSpeech_2022/scripts
+   -- python3 A.02.Get.Montreal.Choice.for.NatBliz.py
+   -- output:- ../text_data/03.Blizzard.Lexicon.No.Variation.txt  
+
+######################################################### VAR-FREE Lexicon created #############################################################
+####################################################### TBR only once NOT per system #########################################################
+
+5. Run MFA based on this v-free lexicon:-
+   -- bin/mfa_align $WD/Complete_Dataset/systems_to_montreal/A $WD/organized_InterSpeech_2022/text_data/03.Blizzard.Lexicon.No.Variation.txt english $WD/Complete_Dataset/output_montreal
+
+
+6. TextGrids with phoneme and word-level alignment will be produced. 
+   
+   $WD/Complete_Dataset/output_montreal/A/01.textgrids_MFA
+
+7. Downsample raw wavFiles and keep it together:-
+   cd $WD/Complete_Dataset/raw_blizzard_data/A
+   for i in *wav; do sox $i -r 16k ${i}_16k.wav; done   #downsampled
+
+   mkdir $WD/Complete_Dataset/output_montreal/A/01.wavs_16K
+   mv ./*.wav_16k.wav $WD/Complete_Dataset/output_montreal/A/01.wavs_16K      #moved 
+   
+   cd $WD/Complete_Dataset/output_montreal/A/01.wavs_16K
+   find . -type f -name "*.wav_16k.wav" -exec rename 's/\.wav_16k.wav$/.wav/' '{}' \; #and renamed..
+   
+   
+################################ MFA ALIGNMENTS DONE!!! ##########################################
+
+1.  Create directories that will be required later:-
+    -- cd $WD/organized_InterSpeech_2022/data/    
+       -- for dir in */; do mkdir -- "$dir"/{02.stops_with_closure,03.textgrids_noise,04.noise_region_stops,05.fricatives}/; done
+       -- for dir in */; do mkdir -- "$dir"/{06.context_separation_consonants,07.vowels,08.formants_and_variances,09.syllables}/; done
+ 
+2.  Create sub-directories for contextual separation of vowels/consonants:-
+    -- cd $WD/organized_InterSpeech_2022/data/     
+    	-- consonants:-
+           for dir in */; do mkdir -- "$dir"/06.context_separation_consonants/{affricates_CV,affricates_isolate,affricates_VC,fricatives_CV,fricatives_isolate,fricatives_VC,stops_CV,stops_isolate,stops_VC}; done
+
+       -- non-fricative consonants:-
+           for dir in */; do mkdir -- "$dir"/06.context_separation_consonants/{affricates_CV,affricates_isolate,affricates_VC,stops_CV,stops_isolate,stops_VC}/{stops_with_closure,noise_region_stops}; done
+
+       -- vowels:-
+          for dir in */; do mkdir -- "$dir"/07.vowels/{V1_VC,V2_CV}; done
+################################ FOLDER STRUCTURE CREATED!!! ########################################## (works, tested 08/04/22)
+
+1. Run the scripts to gather data:-
+   -#- Extracting stops as given by MFA:-
+      python3 $WD/organized_InterSpeech_2022/scripts/C.01.Extract.Stops.From.MFA.py A
+      output - $WD/organized_InterSpeech_2022/data/02.stops_with_closure/
+
+   -#- Creating empty noise textgrids and filling them up:-
+      python3 $WD/organized_InterSpeech_2022/scripts/C.02.Create.Empty.Noise.Tiers.py A
+      python3 $WD/organized_InterSpeech_2022/scripts/C.03.Mark.Noise.Boundaries.CV.py A
+      
+      output - $WD/organized_InterSpeech_2022/data/03.textgrids_noise/
+
+   -#- Extracting just the noise region:-
+      python3 $WD/organized_InterSpeech_2022/scripts/C.04.Extract.Stops.Noise.From.MFA.py A
+      output - $WD/organized_InterSpeech_2022/data/04.noise_region_stops/ 
+    
+    -#- Extracting fricatives:-        
+        python3 $WD/organized_InterSpeech_2022/scripts/C.05.Extract.Fricatives.From.MFA.py A
+        output - $WD/organized_InterSpeech_2022/data/05.fricatives/
+                                          ######################## upto SSW ######################
+     -#- Extract consonants contextually:-
+         python3 $WD/organized_InterSpeech_2022/scripts/C.06.Separate.Consonants.Into.Contexts.py A
+         output  $WD/organized_InterSpeech_2022/data/A/06.context_separation_with_closure/CONS_CV/ (CONS = affricate, fricative, stop) 
+         
+         python3 $WD/organized_InterSpeech_2022/scripts/C.07.Rearrange.Stops.Affricates.py A
+         output  $WD/organized_InterSpeech_2022/data/A/06.context_separation_with_closure/CONS_CV/stops_with_closure (CONS = affricate, stop) ### extraction with closure
+   
+         python3 $WD/organized_InterSpeech_2022/scripts/C.08.Separate.Noise.Region.Context.py A
+         output  $WD/organized_InterSpeech_2022/data/A/06.context_separation_with_closure/CONS_CV/noise_region_stops/ ### extraction of only noise (CONS = affricate, stop)     
+     
+     -#- Extract vowels contextually as given by MFA:-
+         python3 $WD/organized_InterSpeech_2022/scripts/V.01.Extract.Vowels.From.MFA.py A
+         output  $WD/organized_InterSpeech_2022/data/A/0
+
+################################ FOLDERS FILLED UP WITH WAVES & TEXTGRIDS ########################################## (works, tested 08/04/22)
+    
+2. Run scripts to extract features (consonants in context):-
+  
+   -#- duration 
+      -- python3 $WD/organized_InterSpeech_2022/scripts/C.09.Extract.Duration.py A CV # remember TWO arguments  
+         output = $WD/organized_InterSpeech_2022/indiv_feat_files/C.Sys.A.Duration.Obstruents.CV.txt
+
+   -#- amplitude
+       -- python3 $WD/organized_InterSpeech_2022/scripts/C.10.Extract.Amplitude.py A CV # remember TWO arguments
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/C.Sys.A.Amplitude.Obstruents.CV.txt
+
+   -#- spectrals
+       -- python3 $WD/organized_InterSpeech_2022/scripts/C.11.Extract.Spectrals.py A CV # remember TWO arguments
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/C.Sys.A.Spectrals.Obstruents.CV.txt
+   
+3. Run scripts to extract features (vowels in context):- 
+   -#- duration
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.02.Extract.Duration.py A # only ONE argument.
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.Sys.A.Duration.Vowels.txt
+
+   -#- amplitude
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.03.Extract.Amplitude.py A# only ONE argument.
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.Sys.A.Amplitude.Vowels.txt
+
+   -#- spectrals
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.04.Extract.Spectrals.py A # only ONE argument. 
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.Sys.A.Spectrals.Vowels.txt
+       
+   -#- formants 
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.06.Formants.Wrapper.py 
+          output = $WD/organized_InterSpeech_2022/data/08.formants_and_variances
+
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.08.Variance.Wrapper.py
+          output = $WD/organized_InterSpeech_2022/data/08.formants_and_variances 	#yes, same place.
+       
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.09.Get.Minimum.Variance.py
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.Sorted.Variances.A.txt 	
+          
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.10.Create.Optimized.Formants.File.py
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.Optimized.Ceiling.A.txt
+          
+   -#- intermediate post-processing
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.11.Get.Word.Label.py
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.Optimized.Ceiling.A.WordLabel.txt  ## adding wordlabel
+       
+       -- Rscript $WD/organized_InterSpeech_2022/scripts/V.12.Separate.Lower.Higher.Formants.R A
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.System.A.Onset.CV.Lower.Formants.txt
+                 =                                         /V.System.A.Onset.CV.Higher.Formants.txt
+                 =                                         /V.System.A.Offset.VC.Lower.Formants.txt
+                 =                                         /V.System.A.Offset.VC.Higher.Formants.txt ## separating into high/low formants
+
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.13.Add.Columns.Phon.Descriptors.py  
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/V.System.A.Onset.CV.Lower.Formants_newCols.txt
+                 =                                         /V.System.A.Onset.CV.Higher.Formants_newCols.txt
+                 =                                         /V.System.A.Offset.VC.Lower.Formants_newCols.txt
+                 =                                         /V.System.A.Offset.VC.Higher.Formants_newCols.txt ## new added columns as DESCRIPTORS
+                 
+   -#- relative amplitude
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.14.Calculate.Relative.Amplitude_CV.py
+       -- python3 $WD/organized_InterSpeech_2022/scripts/V.14.Calculate.Relative.Amplitude_VC.py ### calling it the same number, so that we may coalesce them!
+          output = $WD/organized_InterSpeech_2022/indiv_feat_files/
+                 =                                         /V.System.A.Onset.CV.Higher.Formants_newCols_RA.txt
+                 =                                         /
+                 =                                         /V.System.A.Offset.VC.Higher.Formants_newCols_RA.txt 
+       ----- keep in mind that only the F3-F5 are relevant here, so we don't compute RA for Lower.Formants.txt
+
+3. Combine individual systems into complete combined files
+   python3 $WD/organized_InterSpeech_2022/scripts/A.03.Ind2Mega.Combine.Features.py
+           = 
+   
+################################ FEATURES EXTRACTED ##########################################
+   -#- 
+          
+              
+
+
+
+
+    
+

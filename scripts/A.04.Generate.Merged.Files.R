@@ -1,0 +1,72 @@
+setwd("/home/ayushi/ayushi_new/experiments_speechify/speechify/scripts")
+#install.packages("itertools")
+library(dplyr)
+library(ggpubr)
+library(tidyverse)
+library(glue)
+library(rstatix)
+library(itertools)
+cons_dur_cv = read.csv("../text_data/C.01.Duration.All.Systems.CV.txt", sep = '\t', header = TRUE, na.strings = "")
+cons_amp_cv = read.csv("../text_data/C.02.Amplitude.All.Systems.CV.txt", sep = '\t', header = TRUE, na.strings = "")
+cons_spec_cv = read.csv("../text_data/C.03.Spectrals.All.Systems.CV.txt", sep = '\t', header = TRUE, na.strings = "")
+colnames(cons_dur_cv)
+identity_cols <- c("Filename", "Word.Index", "Word", "Phoneme.Index", "Phoneme", "Sys_Name")
+
+## Create a unique field using ^^ identity_cols
+SortUniqueId <- function(df) {
+    df$UnID = do.call(paste, c(df[identity_cols], sep = "-"))
+    df = df[order(df$UnID),]
+}
+
+Cons.Duration_CV = SortUniqueId(cons_dur_cv)
+Cons.Amplitude_CV = SortUniqueId(cons_amp_cv)
+Cons.Spectrals_CV = SortUniqueId(cons_spec_cv)
+
+#### Merge the data ##
+Merged_ConsData_CV = Reduce(merge, list(Cons.Duration_CV, Cons.Amplitude_CV, Cons.Spectrals_CV))
+
+summary(Merged_ConsData_CV$Sys_Name) ## This is important to see if all the systems have the same number of data points
+
+### Display all the column names with their indices
+iname = enumerate(colnames(Merged_ConsData_CV))
+#cat(sapply(iname, function(n) sprintf("%d -> %s\n", n$index, n$value)), sep = "")
+Cons_CV_Merged = Merged_ConsData_CV 
+
+cols_to_update = c("Sys_Family","Sys_Quality", "Sys_CrossType")
+Cons_CV_Merged[cols_to_update] = sapply(Cons_CV_Merged[cols_to_update], as.character)
+#sapply(Cons_CV_Merged, class)
+
+#1. Family
+Cons_CV_Merged$Sys_Family[Cons_CV_Merged$Sys_Family == "HMM_WP"] <- "HMM"
+Cons_CV_Merged$Sys_Family[Cons_CV_Merged$Sys_Family == "HMM_P"] <- "HMM"
+Cons_CV_Merged$Sys_Family = as.factor(Cons_CV_Merged$Sys_Family)
+print(summary(Cons_CV_Merged$Sys_Family))
+
+#2. Quality
+Cons_CV_Merged$Sys_Quality[Cons_CV_Merged$Sys_Quality == "0"] <- "Neural"
+Cons_CV_Merged$Sys_Quality = as.factor(Cons_CV_Merged$Sys_Quality)
+print(summary(Cons_CV_Merged$Sys_Quality))
+
+#3. CrossType
+Cons_CV_Merged$Sys_CrossType[Cons_CV_Merged$Sys_CrossType == "0"] <- "Neural"
+Cons_CV_Merged$Sys_CrossType = as.factor(Cons_CV_Merged$Sys_CrossType)
+print(summary(Cons_CV_Merged$Sys_CrossType))
+##############################################################################################################
+
+Cons_CV_Merged$Sys.Fam = factor(Cons_CV_Merged$Sys_Family, levels = c("Natural", "Hybrid", "UnitSel", "HMM", "Neural"))
+
+Cons_CV_Merged$Sys.Name = factor(Cons_CV_Merged$Sys_Name, levels = c("A", "M", "K", "I", "C", "L", "N", "Q", "R", "X", "Y", "Z"))
+
+Cons_CV_Merged$Sys.Qual = factor(Cons_CV_Merged$Sys_Quality, levels = c("Natural","R1","R2","R3","R4", "Neu-R1"))
+
+Cons_CV_Merged$Sys.Fam.CrossType = factor(Cons_CV_Merged$Sys_CrossType, levels = (c("Natural","Hybrid-R1","UnitSel-R2","UnitSel-R3","HMM-R2","HMM-R3", "HMM-R4", "Neural-MR", "Neural-WN", "Neural-GA")))
+
+iname = enumerate(colnames(Cons_CV_Merged))
+cat(sapply(iname, function(n) sprintf("%d -> %s\n", n$index, n$value)), sep = "")
+output = "../text_data/C.04.Merged.Consonants.CV.txt"
+summary(Cons_CV_Merged)
+write.table(Cons_CV_Merged, file = output, row.names=FALSE, sep="\t")
+print("Written to file Consonants CV")
+identical(VC_Merged, Cons_CV_Merged)
+identical(CV_Merged, Cons_CV_Merged)
+
